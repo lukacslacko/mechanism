@@ -1,0 +1,135 @@
+{
+	"passed": true,
+	"engine": "5.8.4-58902052+++UE5+Release-5.8",
+	"metal_materials": 4,
+	"rotation_travel_degrees": 588.55378173316933,
+	"max_pivot_drift_cm": 0,
+	"motion_frames": 3089,
+	"assembly_fit_passed": true,
+	"max_support_error_cm": 0,
+	"assembly_frames": 3319,
+	"pause_resume_passed": true,
+	"reset_passed": true,
+	"keyboard_navigation_passed": true,
+	"keyboard_tests": [
+		{
+			"key": "W",
+			"passed": true,
+			"forward_cm": 45.663385391235366,
+			"right_cm": 3.5888548147992756e-14,
+			"world_up_cm": -13.021216529346162,
+			"yaw_degrees": 0,
+			"pitch_degrees": 0
+		},
+		{
+			"key": "S",
+			"passed": true,
+			"forward_cm": -47.526764273643508,
+			"right_cm": -7.1430432994870179e-14,
+			"world_up_cm": 13.552571348883987,
+			"yaw_degrees": 0,
+			"pitch_degrees": 0
+		},
+		{
+			"key": "A",
+			"passed": true,
+			"forward_cm": 3.1974423109204508e-14,
+			"right_cm": -43.405784815549815,
+			"world_up_cm": 0,
+			"yaw_degrees": 0,
+			"pitch_degrees": 0
+		},
+		{
+			"key": "D",
+			"passed": true,
+			"forward_cm": -4.6185277824406512e-14,
+			"right_cm": 43.28710019588469,
+			"world_up_cm": 0,
+			"yaw_degrees": 0,
+			"pitch_degrees": 0
+		},
+		{
+			"key": "Q",
+			"passed": true,
+			"forward_cm": 12.828765825121849,
+			"right_cm": 1.2486814538225393e-15,
+			"world_up_cm": -44.988490641117096,
+			"yaw_degrees": 0,
+			"pitch_degrees": 0
+		},
+		{
+			"key": "E",
+			"passed": true,
+			"forward_cm": -12.729867960855692,
+			"right_cm": -1.2390552800646567e-15,
+			"world_up_cm": 44.641671180725069,
+			"yaw_degrees": 0,
+			"pitch_degrees": 0
+		},
+		{
+			"key": "I",
+			"passed": true,
+			"forward_cm": -0,
+			"right_cm": 0,
+			"world_up_cm": 0,
+			"yaw_degrees": 2.3299222107198148e-08,
+			"pitch_degrees": 21.626444581458092
+		},
+		{
+			"key": "K",
+			"passed": true,
+			"forward_cm": -0,
+			"right_cm": 0,
+			"world_up_cm": 0,
+			"yaw_degrees": 5.0645638793866965e-09,
+			"pitch_degrees": -22.690917608490281
+		},
+		{
+			"key": "J",
+			"passed": true,
+			"forward_cm": -0,
+			"right_cm": 0,
+			"world_up_cm": 0,
+			"yaw_degrees": -22.412094691520394,
+			"pitch_degrees": 8.3608178158556257e-09
+		},
+		{
+			"key": "L",
+			"passed": true,
+			"forward_cm": -0,
+			"right_cm": 0,
+			"world_up_cm": 0,
+			"yaw_degrees": 21.749926826477747,
+			"pitch_degrees": 6.6886514105135575e-09
+		},
+		{
+			"key": "W after turning L",
+			"passed": true,
+			"forward_cm": 40.647050142288144,
+			"right_cm": -2.6645352591003757e-14,
+			"world_up_cm": -11.590775332129283,
+			"yaw_degrees": 0,
+			"pitch_degrees": 0
+		},
+		{
+			"key": "Shift+W",
+			"passed": true,
+			"forward_cm": 142.20651224255556,
+			"right_cm": -1.3085334814556165e-14,
+			"world_up_cm": -40.551128041173399,
+			"yaw_degrees": 0,
+			"pitch_degrees": 0
+		},
+		{
+			"key": "F",
+			"passed": true,
+			"forward_cm": -0,
+			"right_cm": 0,
+			"world_up_cm": 0,
+			"yaw_degrees": 0,
+			"pitch_degrees": 0
+		}
+	],
+	"brass_mesh": "BrassPointer",
+	"tests": "Cooked map; four camera presets; quality switching; full revolution with fixed bore axis; plate/table and pointer/collar contact; Space pause/resume; R reset; injected WASD/QE/IJKL key events; look rotates in place; movement follows new look direction; Shift speed; Q keeps quality; F changes quality; screenshot capture; clean exit"
+}

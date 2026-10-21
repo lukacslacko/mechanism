@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "actor_count": 46,
+  "table_top_z_cm": 82.0,
+  "steel_plate_z_cm": [
+    82.0,
+    83.60000002384186
+  ],
+  "collar_z_cm": [
+    83.60000002384186,
+    84.40000003576279
+  ],
+  "pivot_pin_z_cm": [
+    83.60000002384186,
+    93.40000021457672
+  ],
+  "brass_pointer_z_cm": [
+    84.40000003576279,
+    91.80000013113022
+  ],
+  "support_errors_cm": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "radial_pin_bore_clearance_cm": 0.2,
+  "pin_protrusion_cm": 1.6000000834465027,
+  "pointer_plate_gap_cm": 0.800000011920929
+}

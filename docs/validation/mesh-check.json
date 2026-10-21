@@ -1,0 +1,51 @@
+{
+  "passed": true,
+  "meshes": {
+    "SteelPlate": {
+      "watertight": true,
+      "volume_cm3": 15993.878872876265,
+      "dimensions_cm": [
+        100.0,
+        100.0,
+        1.600000023841858
+      ],
+      "edge_round_cm": 0.18
+    },
+    "PivotPin": {
+      "watertight": true,
+      "volume_cm3": 69.21622473320552,
+      "dimensions_cm": [
+        3.0,
+        3.0,
+        9.800000190734863
+      ],
+      "edge_round_cm": 0.1
+    },
+    "PivotCollar": {
+      "watertight": true,
+      "volume_cm3": 20.0275910605797,
+      "dimensions_cm": [
+        6.400000095367432,
+        6.400000095367432,
+        0.800000011920929
+      ],
+      "edge_round_cm": 0.06,
+      "bore_radius_cm": 1.5,
+      "open_through_bore": true,
+      "sampled_clear_pin_radius_cm": 1.49
+    },
+    "BrassPointer": {
+      "watertight": true,
+      "volume_cm3": 4312.274053890671,
+      "dimensions_cm": [
+        80.0,
+        7.400000095367432,
+        7.400000095367432
+      ],
+      "edge_round_cm": 0.12,
+      "bore_radius_cm": 1.7,
+      "open_through_bore": true,
+      "sampled_clear_pin_radius_cm": 1.49
+    }
+  }
+}

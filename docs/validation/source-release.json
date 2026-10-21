@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-21",
+  "engine": "5.8.4",
+  "platform": "macOS 27.0.1 / Apple M2 Pro",
+  "clean_project_editor_build": "passed",
+  "clean_project_package": "passed",
+  "scene_validation": "passed",
+  "runtime_validation": "passed",
+  "rendered_images_inspected": true,
+  "local_machine_asset_paths_removed": true,
+  "windows_runtime_tested": false,
+  "rtx_hardware_ray_tracing_tested": false,
+  "quest_tested": false
+}
