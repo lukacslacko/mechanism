@@ -4,6 +4,9 @@ DerivedDataCache/
 Intermediate/
 Saved/
 Packaged/
+Build/Mac/Resources/
+Build/**/FileOpenOrder/
+*.PackageVersionCounter
 .vs/
 .vscode/
 .idea/
