@@ -1,4 +1,7 @@
 #include "MaterialHall.h"
+#include "HallVRPawn.h"
+#include "HeadMountedDisplayFunctionLibrary.h"
+#include "Misc/MessageDialog.h"
 #include "Modules/ModuleManager.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
@@ -18,6 +21,7 @@
 #include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Serialization/JsonSerializer.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Styling/CoreStyle.h"
@@ -51,9 +55,39 @@ AMaterialHallController::AMaterialHallController()
 void AMaterialHallController::BeginPlay()
 {
     Super::BeginPlay();
+    bSmokeTest = FParse::Param(FCommandLine::Get(), TEXT("HallSelfTest"));
+    bPerformanceTest = FParse::Param(FCommandLine::Get(), TEXT("HallPerformanceTest"));
+    bVRTest = FParse::Param(FCommandLine::Get(), TEXT("HallVRTest"));
+    bVRHardwareTest = FParse::Param(FCommandLine::Get(), TEXT("HallVRHardwareTest"));
+    bVRMode = bVRTest || bVRHardwareTest || GEngine->IsStereoscopic3D();
+    if (FParse::Param(FCommandLine::Get(), TEXT("HallVR")) && !bVRMode)
+    {
+        FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Quest Link is not active. Open Meta Horizon Link on the PC, enter Quest Link in the headset, then launch Mechanism Quest again.")));
+        FGenericPlatformMisc::RequestExit(false);
+        return;
+    }
+    if (bVRMode) AntiAliasingMethod = 2;
+    if (!bSmokeTest && !bPerformanceTest && !bVRTest && !bVRHardwareTest)
+    {
+        const TCHAR* Section = bVRMode ? TEXT("MaterialHall.VRPerformance") : TEXT("MaterialHall.Performance");
+        GConfig->GetBool(Section, TEXT("AutoTune"), bAutoTune, GGameUserSettingsIni);
+        GConfig->GetBool(Section, TEXT("VSync"), bVSync, GGameUserSettingsIni);
+        GConfig->GetInt(Section, TEXT("AntiAliasingMethod"), AntiAliasingMethod, GGameUserSettingsIni);
+        GConfig->GetInt(Section, TEXT("ManualQuality"), ManualQualityIndex, GGameUserSettingsIni);
+        AntiAliasingMethod = AntiAliasingMethod == 2 ? 2 : 4;
+        ManualQualityIndex = FMath::Clamp(ManualQualityIndex, 0, 2);
+    }
     ViewCamera = GetWorld()->SpawnActor<ACameraActor>();
     ViewCamera->GetCameraComponent()->bConstrainAspectRatio = false;
     SetViewTarget(ViewCamera);
+    if (bVRMode)
+    {
+        VRPawn = GetWorld()->SpawnActor<AHallVRPawn>();
+        VRPawn->Initialize(bVRTest);
+        Possess(VRPawn);
+        SetViewTarget(VRPawn);
+        bShowMouseCursor = false;
+    }
     if (GEngine->GameViewport && GEngine->GameViewport->GetWindow().IsValid())
         GEngine->GameViewport->GetWindow()->SetTitle(FText::FromString(TEXT("Material Hall")));
     for (TActorIterator<AStaticMeshActor> It(GetWorld()); It; ++It)
@@ -78,13 +112,13 @@ void AMaterialHallController::BeginPlay()
         }
     }
     SetView(0);
-    ApplyQuality(1);
+    ApplyQuality(bAutoTune ? 1 : ManualQualityIndex);
     FInputModeGameAndUI Mode;
     Mode.SetHideCursorDuringCapture(false);
     Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
     SetInputMode(Mode);
+    if (bVRMode) SetInputMode(FInputModeGameOnly());
     BuildInterface();
-    bSmokeTest = FParse::Param(FCommandLine::Get(), TEXT("HallSelfTest"));
     FParse::Value(FCommandLine::Get(), TEXT("HallCaptureDir="), CaptureDirectory);
     if (CaptureDirectory.IsEmpty()) CaptureDirectory = FPaths::ProjectSavedDir() / TEXT("PivotValidation");
     TestStart = FPlatformTime::Seconds();
@@ -93,6 +127,7 @@ void AMaterialHallController::BeginPlay()
 
 void AMaterialHallController::SetView(int32 Index)
 {
+    if (bVRMode && VRPawn) { VRPawn->SetStation(Index); return; }
     ViewIndex = Index;
     FVector Position;
     float FOV;
@@ -151,13 +186,17 @@ void AMaterialHallController::ApplyQuality(int32 Index)
         Settings->SetOverallScalabilityLevel(2);
         Settings->SetAntiAliasingQuality(3);
         Settings->SetTextureQuality(3);
+        Settings->SetViewDistanceQuality(Index==0 ? 1 : 2);
+        Settings->SetShadowQuality(Index==0 ? 1 : Index==2 ? 3 : 2);
+        Settings->SetVisualEffectQuality(Index==0 ? 1 : 2);
         Settings->SetGlobalIlluminationQuality(Index==2 ? 3 : 2);
         Settings->SetReflectionQuality(Index==0 ? 2 : 3);
-        Settings->SetFrameRateLimit(60);
+        Settings->SetFrameRateLimit(bVRMode ? 0 : 60);
+        Settings->SetVSyncEnabled(!bVRMode && bVSync);
+        Settings->SetDynamicResolutionEnabled(!bVRMode && bAutoTune);
         Settings->ApplyNonResolutionSettings();
     }
-    SetHallCVar(TEXT("r.ScreenPercentage"), Index==0 ? 50 : Index==1 ? 65 : 85);
-    SetHallCVar(TEXT("r.AntiAliasingMethod"), 4);
+    SetHallCVar(TEXT("r.ScreenPercentage"), bVRMode ? (bAutoTune ? VRResolutionGovernor.Percentage : Index==0 ? 60 : Index==1 ? 80 : 100) : Index==0 ? 50 : Index==1 ? 65 : 85);
     SetHallCVar(TEXT("r.Shadow.Virtual.SMRT.RayCountLocal"), Index==2 ? 8 : 4);
     SetHallCVar(TEXT("r.Shadow.Virtual.SMRT.SamplesPerRayLocal"), Index==2 ? 8 : 4);
     SetHallCVar(TEXT("r.Lumen.ScreenProbeGather.Temporal.MaxFramesAccumulated"), 8);
@@ -165,6 +204,7 @@ void AMaterialHallController::ApplyQuality(int32 Index)
     SetHallCVar(TEXT("r.Lumen.TraceMeshSDFs.Allow"), 1);
     SetHallCVar(TEXT("r.LumenScene.SurfaceCache.CardMinResolution"), 2);
     SetHallCVar(TEXT("r.Lumen.ScreenProbeGather.DownsampleFactor"), Index==0 ? 32 : 16);
+    ApplyPerformanceSettings();
     UE_LOG(LogMaterialHall, Display, TEXT("QUALITY PROFILE: %d"), QualityIndex);
 }
 
@@ -180,35 +220,40 @@ void AMaterialHallController::ResetScene()
 {
     bAnimateRod=true; MotionTime=0;
     if (BrassRod) BrassRod->SetActorLocationAndRotation(BrassRestPosition,FRotator(0,BrassRestYaw,0));
-    SetView(0);
+    if (!bVRMode) SetView(0);
 }
 
 void AMaterialHallController::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
     SmoothedFrameTime=FMath::Lerp(SmoothedFrameTime,DeltaSeconds,.05f);
-    bool bOrbitChanged=false;
-    if (IsInputKeyDown(EKeys::RightMouseButton))
+    TickPerformance(DeltaSeconds);
+    if (bVRMode && VRPawn) VRPawn->UpdateInput(*this, IsVRActive());
+    if (!bVRMode)
     {
-        float DX=0,DY=0; GetInputMouseDelta(DX,DY);
-        OrbitYaw-=DX*.25f; OrbitPitch=FMath::Clamp(OrbitPitch+DY*.25f,-89.f,89.f);
-        bOrbitChanged=true;
+        bool bOrbitChanged=false;
+        if (IsInputKeyDown(EKeys::RightMouseButton))
+        {
+            float DX=0,DY=0; GetInputMouseDelta(DX,DY);
+            OrbitYaw-=DX*.25f; OrbitPitch=FMath::Clamp(OrbitPitch+DY*.25f,-89.f,89.f);
+            bOrbitChanged=true;
+        }
+        if (WasInputKeyJustPressed(EKeys::MouseScrollUp)) { OrbitDistance=FMath::Max(20.f,OrbitDistance*.9f); bOrbitChanged=true; }
+        if (WasInputKeyJustPressed(EKeys::MouseScrollDown)) { OrbitDistance=FMath::Min(3000.f,OrbitDistance/0.9f); bOrbitChanged=true; }
+        if (bOrbitChanged) UpdateCamera();
+        if (WasInputKeyJustPressed(EKeys::One)) SetView(0);
+        if (WasInputKeyJustPressed(EKeys::Two)) SetView(1);
+        if (WasInputKeyJustPressed(EKeys::Three)) SetView(2);
+        if (WasInputKeyJustPressed(EKeys::Four)) SetView(3);
+        if (WasInputKeyJustPressed(EKeys::F)) SelectQuality((QualityIndex+1)%3);
+        if (WasInputKeyJustPressed(EKeys::SpaceBar)) ToggleMotion();
+        if (WasInputKeyJustPressed(EKeys::R)) ResetScene();
+        auto Axis=[this](const FKey& Positive,const FKey& Negative) { return float(IsInputKeyDown(Positive))-float(IsInputKeyDown(Negative)); };
+        Navigate(Axis(EKeys::W,EKeys::S),Axis(EKeys::D,EKeys::A),Axis(EKeys::E,EKeys::Q),
+            Axis(EKeys::L,EKeys::J),Axis(EKeys::I,EKeys::K),DeltaSeconds,
+            IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift) ? 3.f : 1.f);
     }
-    if (WasInputKeyJustPressed(EKeys::MouseScrollUp)) { OrbitDistance=FMath::Max(20.f,OrbitDistance*.9f); bOrbitChanged=true; }
-    if (WasInputKeyJustPressed(EKeys::MouseScrollDown)) { OrbitDistance=FMath::Min(3000.f,OrbitDistance/0.9f); bOrbitChanged=true; }
-    if (bOrbitChanged) UpdateCamera();
-    if (WasInputKeyJustPressed(EKeys::One)) SetView(0);
-    if (WasInputKeyJustPressed(EKeys::Two)) SetView(1);
-    if (WasInputKeyJustPressed(EKeys::Three)) SetView(2);
-    if (WasInputKeyJustPressed(EKeys::Four)) SetView(3);
-    if (WasInputKeyJustPressed(EKeys::F)) ApplyQuality((QualityIndex+1)%3);
-    if (WasInputKeyJustPressed(EKeys::SpaceBar)) ToggleMotion();
-    if (WasInputKeyJustPressed(EKeys::R)) ResetScene();
     if (WasInputKeyJustPressed(EKeys::Escape)) FGenericPlatformMisc::RequestExit(false);
-    auto Axis=[this](const FKey& Positive,const FKey& Negative) { return float(IsInputKeyDown(Positive))-float(IsInputKeyDown(Negative)); };
-    Navigate(Axis(EKeys::W,EKeys::S),Axis(EKeys::D,EKeys::A),Axis(EKeys::E,EKeys::Q),
-        Axis(EKeys::L,EKeys::J),Axis(EKeys::I,EKeys::K),DeltaSeconds,
-        IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift) ? 3.f : 1.f);
     if (bAnimateRod && BrassRod)
     {
         const float OldYaw=BrassRod->GetActorRotation().Yaw;
@@ -222,10 +267,13 @@ void AMaterialHallController::Tick(float DeltaSeconds)
         }
     }
     if (bSmokeTest && !bTestFinished) TickSmokeTest();
+    if (bPerformanceTest && !bTestFinished) TickPerformanceTest();
+    if ((bVRTest || bVRHardwareTest) && !bTestFinished) TickVRTest();
 }
 
 void AMaterialHallController::BuildInterface()
 {
+    if (bVRMode) { BuildVRInterface(); return; }
     const FLinearColor Ink(.035f,.045f,.05f,1), Muted(.10f,.13f,.15f,1);
     static FButtonStyle HallButtonStyle = FButtonStyle()
         .SetNormal(FSlateColorBrush(FLinearColor(.76f,.74f,.68f,1)))
@@ -246,8 +294,16 @@ void AMaterialHallController::BuildInterface()
         Cameras->AddSlot().AutoWidth().Padding(0,0,5,0)[Button(Names[Index],[this,Index](){ SetView(Index); })];
     TSharedRef<SHorizontalBox> Qualities=SNew(SHorizontalBox);
     const TCHAR* QualityNames[]={TEXT("Smooth"),TEXT("Balanced"),TEXT("Fine")};
+    Qualities->AddSlot().AutoWidth().Padding(0,0,5,0)[Button(TEXT("Auto 60"),[this](){ SetAutoTune(true); })];
     for (int32 Index=0;Index<3;++Index)
-        Qualities->AddSlot().AutoWidth().Padding(0,0,5,0)[Button(QualityNames[Index],[this,Index](){ ApplyQuality(Index); })];
+        Qualities->AddSlot().AutoWidth().Padding(0,0,5,0)[Button(QualityNames[Index],[this,Index](){ SelectQuality(Index); })];
+
+    auto ToggleButton=[&](TFunction<FText()> Label,TFunction<void()> Action)
+    {
+        return SNew(SButton).ButtonStyle(&HallButtonStyle).IsFocusable(false).ContentPadding(FMargin(13,8))
+            .OnClicked_Lambda([Action](){ Action(); return FReply::Handled(); })
+            [SNew(STextBlock).Text_Lambda([Label](){ return Label(); }).Font(Medium).ColorAndOpacity(Ink)];
+    };
 
     Interface=SNew(SOverlay)
     + SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(24)
@@ -259,7 +315,10 @@ void AMaterialHallController::BuildInterface()
         +SVerticalBox::Slot().AutoHeight()[Cameras]
         +SVerticalBox::Slot().AutoHeight().Padding(0,15,0,6)[SNew(STextBlock).Text(FText::FromString("RENDER QUALITY")).Font(Small).ColorAndOpacity(Muted)]
         +SVerticalBox::Slot().AutoHeight()[Qualities]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,8,0,12)[SNew(STextBlock).Font(Small).ColorAndOpacity(Muted).Text_Lambda([this](){const TCHAR* N[]={TEXT("Smooth"),TEXT("Balanced"),TEXT("Fine")};return FText::FromString(FString::Printf(TEXT("%s  ·  %.0f fps"),N[QualityIndex],1.f/FMath::Max(.001f,SmoothedFrameTime)));})]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,8,0,8)[SNew(STextBlock).Font(Small).ColorAndOpacity(Muted).Text_Lambda([this](){ return FText::FromString(GetPerformanceStatus()); })]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,12)[SNew(SHorizontalBox)
+          +SHorizontalBox::Slot().AutoWidth().Padding(0,0,5,0)[ToggleButton([this](){ return FText::FromString(bVSync ? TEXT("VSync: On") : TEXT("VSync: Off")); },[this](){ bVSync=!bVSync; ApplyPerformanceSettings(); SavePerformanceSettings(); })]
+          +SHorizontalBox::Slot().AutoWidth()[ToggleButton([this](){ return FText::FromString(AntiAliasingMethod==4 ? TEXT("Anti-aliasing: TSR") : TEXT("Anti-aliasing: TAA")); },[this](){ AntiAliasingMethod=AntiAliasingMethod==4 ? 2 : 4; ApplyPerformanceSettings(); QualityGovernor.Reset(); SavePerformanceSettings(); })]]
         +SVerticalBox::Slot().AutoHeight()[SNew(STextBlock).Text(FText::FromString("SURFACE FINISH")).Font(Small).ColorAndOpacity(Muted)]
         +SVerticalBox::Slot().AutoHeight().Padding(0,7,0,3)[SNew(SSlider).IsFocusable(false).Value((.24f-.08f)/.47f).OnValueChanged_Lambda([this](float Value){SetFinish(Value);})]
         +SVerticalBox::Slot().AutoHeight()[SNew(STextBlock).Text(FText::FromString("Polished                                    Brushed")).Font(Small).ColorAndOpacity(Muted)]
@@ -291,10 +350,10 @@ void AMaterialHallController::TickSmokeTest()
     if (TestStage==0 && Elapsed>8) { ++TestStage; Capture(TEXT("table.png")); }
     else if (TestStage==1 && Elapsed>10) { ++TestStage; SetView(1); }
     else if (TestStage==2 && Elapsed>16) { ++TestStage; Capture(TEXT("detail.png")); }
-    else if (TestStage==3 && Elapsed>18) { ++TestStage; SetView(2); ApplyQuality(0); }
+    else if (TestStage==3 && Elapsed>18) { ++TestStage; SetView(2); SelectQuality(0); }
     else if (TestStage==4 && Elapsed>24) { ++TestStage; Capture(TEXT("hall.png")); }
     else if (TestStage==5 && Elapsed>26)
-    { ++TestStage; SetView(0); ApplyQuality(1); KeyEvent(EKeys::SpaceBar,IE_Pressed); }
+    { ++TestStage; SetView(0); SelectQuality(1); KeyEvent(EKeys::SpaceBar,IE_Pressed); }
     else if (TestStage==6 && Elapsed>27)
     { ++TestStage; KeyEvent(EKeys::SpaceBar,IE_Released); PausedYaw=BrassRod->GetActorRotation().Yaw; }
     else if (TestStage==7 && Elapsed>30)

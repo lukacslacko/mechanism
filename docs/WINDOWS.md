@@ -99,8 +99,62 @@ The script reports failure if the runtime JSON does not say `passed: true`.
 Each run writes to a new `Saved\Validation\Run-...` directory, so an old result
 cannot be mistaken for a new pass. Inspect the PNGs as well as the numbers.
 
-Windows compilation and rendering have not yet been executed for this source
-release. The recorded reports in `docs/validation` are from the Mac build.
+To exercise VSync/TSR/TAA, manual/auto switching, resolution pressure and recovery,
+and upward effects tuning on the local GPU (about 70 seconds):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Tools\build-windows.ps1 -Action PerformanceTest -EnginePath 'D:\Epic Games\UE_5.8'
+```
+
+This test briefly tightens the GPU frame budget, then restores the normal 60 fps
+budget and checks that resolution recovers and effects reach Fine. The test
+expects sufficient GPU headroom for the bundled scene at its test resolution;
+on slower hardware, inspect the report instead of treating 60 fps as guaranteed.
+Test runs do not save changes to the user's performance preferences.
+
+The editor automation test `MaterialHall.Performance.QualityGovernor` verifies
+sustained pressure/recovery, bounds, cooldowns, background/missing samples, CPU
+pressure, and transient stalls without requiring a GPU.
+
+This local Windows build passed packaging, the runtime rotation/control checks,
+the GPU performance test, and quality-governor automation on an RTX 5070 with
+UE 5.8.4. Current Windows reports are in `Saved/Validation`; the recorded reports
+in `docs/validation` remain the original Mac results.
+
+## Quest Link verification
+
+The OpenXR and XRBase plugins ship with Unreal; no separate Meta Unreal plugin
+or Android SDK is needed for the Windows Link build. Install Meta Horizon Link
+on Windows, connect Quest 2 by USB, enter Quest Link inside the headset, then run
+`Tools/start-quest-link.ps1`. Its environment override selects the Meta runtime
+for the app without changing a global SteamVR/OpenXR setup. The launcher supports
+the current Meta Horizon and older Oculus installation directories.
+
+After packaging, run `Tools/build-windows.ps1 -Action VRTest` for a headset-free
+rig test. It checks the cooked camera/controller/widget components, injected
+Touch A/B/X/Y buttons, snap turning around an offset head pose, floor positioning,
+widget ray collision, and compositor pacing settings. It explicitly reports
+`simulated_rig_no_headset`; it does not prove hardware tracking or stereo output.
+
+For the connected headset test:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Tools\start-quest-link.ps1 -HardwareTest
+```
+
+Wear the headset and hold both controllers during this 45-second run. The report
+in a new `Saved/Validation/Quest-.../vr-check.json` records stereo, head/controller
+tracking, session focus, measured refresh rate, GPU time and average app fps.
+It requires real tracking and frame timing to pass. Also inspect the image in
+both eyes and try the right trigger on the control panel.
+
+Editor automation `MaterialHall.Performance.VRResolution` checks overload,
+upward recovery, quality limits, settling delays, missing timing and CPU-bound
+behavior at 72, 80, 90 and 120 Hz. The desktop governor test remains available.
+
+The VR panel uses `Content/MaterialHall/Materials/VRWidget.uasset`, derived from
+the engine widget material with inverse eye adaptation so its text remains
+readable in the sunlit scene. `Tools/build_vr_ui.py` creates it if absent.
 
 ## Common issues
 
@@ -112,6 +166,11 @@ release. The recorded reports in `docs/validation` are from the Mac build.
   focus; Q/E change height, and F changes quality.
 - **Slow first launch:** wait for shader compilation; try Smooth for interactive
   work, then compare Balanced/Fine after shaders finish.
-- **Want to use Quest 2 over USB:** the present project is a desktop viewer.
-  A PC VR/OpenXR pawn, stereo rendering configuration and controller interaction
-  still need implementation. Installing Android packaging alone will not add them.
+- **Quest mode says Link is not active:** enter Quest Link inside the headset
+  before launching. A USB connection alone does not start the PC VR session.
+- **Panel is out of view:** press Y to hide it, then Y again to place it near your
+  current view. Point the right controller and use its trigger to interact.
+- **Headset runs below its refresh rate:** Auto lowers resolution and effects;
+  it cannot guarantee native refresh if CPU/GPU work exceeds minimum settings.
+  Link encoding, USB transport, runtime reprojection and driver issues are also
+  outside the renderer's quality budget.

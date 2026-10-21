@@ -9,8 +9,9 @@ machine simulator.
 
 The pointer rotates once per minute. A real through-hole clears the pin, and a
 steel collar supports the bar above the plate. Lighting and reflections use
-real-time Lumen. The motion is prescribed animation; a mechanical solver and
-VR interaction are future work.
+real-time Lumen. The motion is prescribed animation; a mechanical solver is
+future work. Windows PC VR supports Quest 2 over USB Quest Link through OpenXR,
+with tracked controllers and a world-space control panel.
 
 ## Start on Windows 11
 
@@ -44,7 +45,39 @@ If the engine is elsewhere, append `-EnginePath 'D:\Epic\UE_5.8'` to the build
 command, or set `$env:UE_ROOT` to that directory. See the [Windows guide](docs/WINDOWS.md)
 for RTX 5070 hardware ray tracing, packaging, testing, and troubleshooting.
 
-## Controls
+## Quest 2 over USB Link
+
+Connect the headset to the PC, open Meta Horizon Link, and enter **Quest Link**
+inside the headset. After packaging, run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Tools\start-quest-link.ps1
+```
+
+This selects the installed Meta OpenXR runtime for this process, preserving the
+system's runtime selection. After packaging, you can also double-click
+`Launch-Quest-Link.cmd` in the repository. `Launch-Desktop.cmd` uses `-nohmd`
+so desktop mode works independently of a connected headset.
+
+The right controller points at the panel; its trigger clicks and drags the
+finish slider. **A** pauses/resumes, **B** resets the mechanism, **X** moves to
+the next of four viewing positions, **Y** shows/hides the panel near your current
+view, and the **right stick** snap-turns 45 degrees. Head tracking and room-scale
+movement use real-world scale. Resetting the mechanism preserves your position.
+
+VR defaults to TAA and automatic quality. It measures the OpenXR compositor's
+display period and targets the headset's current refresh rate, including changes
+during a session. The compositor controls synchronization; the desktop 60 fps
+cap and monitor VSync are disabled in VR. GPU-based resolution adjusts between
+50% and 100% of the runtime's recommended eye resolution, then effects adjust
+under sustained load or headroom. Full resolution is restored before effects
+rise to Fine. Tuning pauses when the headset loses focus or tracking. Manual
+Smooth/Balanced/Fine use 60/80/100% resolution. VR preferences are separate from
+desktop preferences. This is a Windows PC build streamed over Link, not an APK.
+
+See [the Windows guide](docs/WINDOWS.md#quest-link-verification) for VR tests.
+
+## Desktop controls
 
 | Input | Action |
 | --- | --- |
@@ -61,8 +94,21 @@ for RTX 5070 hardware ray tracing, packaging, testing, and troubleshooting.
 | Escape | Quit the game |
 
 The UI also has camera and quality buttons and a shared metal roughness slider.
-Balanced starts at 65% internal resolution with TSR reconstruction and a 60 fps
-limit; Fine uses 85%. Some temporal grain remains in soft shadows and reflections.
+**Auto 60**, VSync, and TSR anti-aliasing are enabled by default. Auto continuously
+adjusts internal resolution between 50% and 100% using Unreal's GPU timings and
+a 60 fps budget with spare capacity reserved for frame-time variation. With
+sustained spare GPU capacity, resolution rises toward 100% and effects climb to
+Fine; sustained overload near the resolution floor reduces effects. Effects
+changes have settling periods and a slower recovery threshold to avoid flicker.
+
+Smooth, Balanced, Fine, or the F key select a manual preset and disable Auto.
+Manual presets use 50%, 65%, and 85% internal resolution respectively. Click
+Auto 60 to resume automatic tuning. The VSync and anti-aliasing buttons toggle
+VSync and TSR/TAA independently; these choices persist between launches.
+The status shows current quality, fps, resolution percentage, and GPU work time.
+Tuning pauses while the app is in the background. A CPU-heavy simulation or a
+GPU workload beyond the minimum settings can still fall below 60 fps; the status
+reports those limits. Some temporal grain remains in soft shadows and reflections.
 
 ## Project layout
 
@@ -92,18 +138,30 @@ The script builds and validates in the background without opening the editor.
 
 ## Validation status
 
-This source snapshot was rebuilt from its clean repository folder, packaged,
+The original desktop baseline was rebuilt from its clean repository folder, packaged,
 rendered and tested on an Apple M2 Pro with macOS 27.0.1 and UE 5.8.4. Its checks covered a complete revolution,
 plate/table and collar/pointer contact, fixed pivot alignment, pause/resume,
 reset and 13 injected keyboard navigation tests. See the recorded JSON reports
 and [pivot close-up](docs/images/pivot.png).
 
-The Windows build script and DX12/SM6 configuration are provided for the next
-machine; **Windows, RTX hardware ray tracing and Quest have not been runtime-tested**.
-This version has no VR pawn, OpenXR configuration or Quest controller interactions.
+This local Windows build was packaged and runtime-tested with UE 5.8.4 on an
+RTX 5070. The adaptive-performance test recovered from 50% to 100% resolution,
+raised effects to Fine, and averaged 59.9 fps during its steady sample. The
+rotation/control regression and quality-governor automation tests also passed;
+local reports are in `Saved/Validation`.
+
+Quest 2 operation over USB Link was confirmed in the headset on 2026-10-21.
+The live OpenXR log detected a 72 Hz target and adaptive stereo resolution.
+The cooked VR rig test and both tuning-governor automation tests passed, including
+simulated 72/80/90/120 Hz pressure and recovery. The initial timed hardware test
+ran before tracking became active and did not pass; the later interactive headset
+session was confirmed by the user. **RTX hardware ray tracing and the updated
+macOS build have not been runtime-tested.**
 
 ## License
 
 Original project work is [MIT licensed](LICENSE). The bundled wood textures are
 CC0, with their authors and source documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-Unreal Engine is installed separately under Epic's license and is not included.
+Unreal Engine is installed separately. The VR widget material derives from an
+engine material and remains subject to Epic's Unreal Engine license; see
+[third-party notices](THIRD_PARTY_NOTICES.md).

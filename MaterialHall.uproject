@@ -5,6 +5,15 @@
   "Description": "Walnut, steel and brass in a white architectural hall.",
   "Plugins": [
     {
+      "Name": "XRBase",
+      "Enabled": true
+    },
+    {
+      "Name": "OpenXR",
+      "Enabled": true,
+      "PlatformAllowList": ["Win64"]
+    },
+    {
       "Name": "PythonScriptPlugin",
       "Enabled": true,
       "TargetAllowList": [
@@ -24,6 +33,12 @@
     }
   ],
   "Modules": [
+    {
+      "Name": "MaterialHallXR",
+      "Type": "Runtime",
+      "LoadingPhase": "PostConfigInit",
+      "PlatformAllowList": ["Win64"]
+    },
     {
       "Name": "MaterialHall",
       "Type": "Runtime",

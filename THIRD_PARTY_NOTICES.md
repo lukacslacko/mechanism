@@ -27,3 +27,9 @@ separately under [Epic's Unreal Engine license](https://www.unrealengine.com/eul
 They are not relicensed by this repository's MIT license. Engine source and
 compiled engine binaries are not included here. The map references built-in
 engine primitives; Unreal supplies those when it opens or cooks the project.
+
+`Content/MaterialHall/Materials/VRWidget.uasset` is derived from Unreal's
+`/Engine/EngineMaterials/Widget3DPassThrough` with inverse eye adaptation added
+for readability. This engine-derived material is subject to Epic's Unreal
+Engine license, not the repository's MIT license. The generation script is
+`Tools/build_vr_ui.py`.
