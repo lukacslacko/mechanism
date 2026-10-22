@@ -1,5 +1,6 @@
 #include "MaterialHall.h"
 #include "HallVRPawn.h"
+#include "HallAndGate.h"
 #include "Camera/CameraComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Engine/Engine.h"
@@ -59,6 +60,10 @@ void AMaterialHallController::BuildVRInterface()
         + SVerticalBox::Slot().AutoHeight()[SNew(STextBlock).Text(FText::FromString(TEXT("MATERIAL HALL  /  QUEST LINK")))
             .Font(FCoreStyle::GetDefaultFontStyle("Bold",28)).ColorAndOpacity(FLinearColor::White)]
         + SVerticalBox::Slot().AutoHeight().Padding(0,16)[Label(TEXT("Point with right hand; trigger to select"))]
+        + SVerticalBox::Slot().AutoHeight().Padding(0,0,0,12)[SNew(SHorizontalBox)
+            + SHorizontalBox::Slot().FillWidth(1).Padding(4)[Button(TEXT("AND gate"),[this]{SelectDemo(true);})]
+            + SHorizontalBox::Slot().FillWidth(1).Padding(4)[Button(TEXT("Pointer"),[this]{SelectDemo(false);})]]
+        + SVerticalBox::Slot().AutoHeight().Padding(0,0,0,16)[BuildGateControls(true)]
         + SVerticalBox::Slot().AutoHeight()[Qualities]
         + SVerticalBox::Slot().AutoHeight().Padding(4,12)[SNew(STextBlock).Font(Font).ColorAndOpacity(FLinearColor::White)
             .Text_Lambda([this] { return FText::FromString(GetPerformanceStatus()); })]
@@ -69,12 +74,14 @@ void AMaterialHallController::BuildVRInterface()
         + SVerticalBox::Slot().AutoHeight().Padding(0,10)[SNew(SSlider).IsFocusable(false).Value((.24f-.08f)/.47f)
             .OnValueChanged_Lambda([this](float Value) { SetFinish(Value); })]
         + SVerticalBox::Slot().AutoHeight().Padding(0,18)[SNew(SHorizontalBox)
-            + SHorizontalBox::Slot().FillWidth(1).Padding(4)[Button(TEXT("Pause / resume"), [this] { ToggleMotion(); })]
+            + SHorizontalBox::Slot().FillWidth(1).Padding(4)[SNew(SButton).ButtonStyle(&Style).IsFocusable(false).ContentPadding(FMargin(20,16))
+                .OnClicked_Lambda([this]{ToggleMotion();return FReply::Handled();})[SNew(STextBlock).Font(Font).ColorAndOpacity(FLinearColor::White).Text_Lambda([this]{return GetMotionLabel();})]]
             + SHorizontalBox::Slot().FillWidth(1).Padding(4)[Button(TEXT("Reset mechanism"), [this] { ResetScene(); })]]
         + SVerticalBox::Slot().AutoHeight()[SNew(SHorizontalBox)
             + SHorizontalBox::Slot().FillWidth(1).Padding(4)[Button(TEXT("Next position"), [this] { VRPawn->SetStation(VRPawn->GetStation()+1); })]
             + SHorizontalBox::Slot().FillWidth(1).Padding(4)[Button(TEXT("Hide panel"), [this] { VRPawn->TogglePanel(); })]]
-        + SVerticalBox::Slot().AutoHeight().Padding(0,18)[Label(TEXT("A: pause   B: reset   X: next position\nY: show / hide panel   Right stick: 45 degree turn"))]];
+        + SVerticalBox::Slot().AutoHeight().Padding(0,18)[SNew(STextBlock).Font(Font).ColorAndOpacity(FLinearColor::White)
+            .Text_Lambda([this]{return FText::FromString(bGateDemo ? TEXT("A / B: toggle inputs   X: next position\nY: panel   Right stick: 45 degree turn") : TEXT("A: pause   B: reset   X: next position\nY: panel   Right stick: 45 degree turn"));})]];
     VRPawn->SetPanel(Interface);
 }
 
@@ -139,7 +146,31 @@ void AMaterialHallController::TickVRTest()
             Capture(TEXT("vr-rig.png"));
             return;
         }
-        if (Elapsed < 5) return;
+        if (TestStage==5 && Elapsed>4)
+        {
+            ++TestStage; SelectDemo(true);
+            Key(EKeys::OculusTouch_Right_A_Click,IE_Pressed); return;
+        }
+        if (TestStage==6 && Elapsed>4.3)
+        {
+            ++TestStage; bVRInputTestPassed &= AndGate->InputTarget(0) && !AndGate->InputTarget(1);
+            Key(EKeys::OculusTouch_Right_A_Click,IE_Released);
+            Key(EKeys::OculusTouch_Right_B_Click,IE_Pressed); return;
+        }
+        if (TestStage==7 && Elapsed>4.6)
+        {
+            ++TestStage; bVRInputTestPassed &= AndGate->InputTarget(0) && AndGate->InputTarget(1);
+            Key(EKeys::OculusTouch_Right_B_Click,IE_Released); return;
+        }
+        if (TestStage==8 && Elapsed>6.5)
+        {
+            ++TestStage;
+            bVRInputTestPassed &= AndGate->IsSettled() && AndGate->OutputBit() && VRPawn->GetPanel()->GetDrawSize().Y==1280;
+            // Face the panel in the simulated camera to check its full layout.
+            VRPawn->GetVRCamera()->SetWorldRotation((VRPawn->GetPanel()->GetComponentLocation()-VRPawn->GetVRCamera()->GetComponentLocation()).Rotation());
+            Capture(TEXT("vr-and-panel.png")); return;
+        }
+        if (Elapsed < 8) return;
     }
     const bool bStereo = GEngine->IsStereoscopic3D();
     const bool bPacing = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS"))->GetInt() == 0 &&

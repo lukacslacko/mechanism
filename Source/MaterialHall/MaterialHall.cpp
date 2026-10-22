@@ -1,5 +1,7 @@
 #include "MaterialHall.h"
 #include "HallVRPawn.h"
+#include "HallAndGate.h"
+#include "HallLatch.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
 #include "Misc/MessageDialog.h"
 #include "Modules/ModuleManager.h"
@@ -57,6 +59,8 @@ void AMaterialHallController::BeginPlay()
     Super::BeginPlay();
     bSmokeTest = FParse::Param(FCommandLine::Get(), TEXT("HallSelfTest"));
     bPerformanceTest = FParse::Param(FCommandLine::Get(), TEXT("HallPerformanceTest"));
+    bGateTest = FParse::Param(FCommandLine::Get(), TEXT("HallGateTest"));
+    bLatchTest = FParse::Param(FCommandLine::Get(), TEXT("HallLatchTest"));
     bVRTest = FParse::Param(FCommandLine::Get(), TEXT("HallVRTest"));
     bVRHardwareTest = FParse::Param(FCommandLine::Get(), TEXT("HallVRHardwareTest"));
     bVRMode = bVRTest || bVRHardwareTest || GEngine->IsStereoscopic3D();
@@ -67,7 +71,7 @@ void AMaterialHallController::BeginPlay()
         return;
     }
     if (bVRMode) AntiAliasingMethod = 2;
-    if (!bSmokeTest && !bPerformanceTest && !bVRTest && !bVRHardwareTest)
+    if (!bSmokeTest && !bPerformanceTest && !bVRTest && !bVRHardwareTest && !bGateTest && !bLatchTest)
     {
         const TCHAR* Section = bVRMode ? TEXT("MaterialHall.VRPerformance") : TEXT("MaterialHall.Performance");
         GConfig->GetBool(Section, TEXT("AutoTune"), bAutoTune, GGameUserSettingsIni);
@@ -111,7 +115,11 @@ void AMaterialHallController::BeginPlay()
             else if (MeshName == TEXT("PivotCollar")) PivotCollar = *It;
         }
     }
-    SetView(0);
+    AndGate = GetWorld()->SpawnActor<AHallAndGate>(FVector(0,0,82),FRotator::ZeroRotator);
+    Latch = GetWorld()->SpawnActor<AHallLatch>(FVector(0,0,82),FRotator::ZeroRotator);
+    bEnableClickEvents = true;
+    SelectDemo(!bSmokeTest && !bPerformanceTest && !bVRTest);
+    if (!bVRMode && !bSmokeTest && !bPerformanceTest && !bGateTest) SelectLatchDemo();
     ApplyQuality(bAutoTune ? 1 : ManualQualityIndex);
     FInputModeGameAndUI Mode;
     Mode.SetHideCursorDuringCapture(false);
@@ -131,6 +139,15 @@ void AMaterialHallController::SetView(int32 Index)
     ViewIndex = Index;
     FVector Position;
     float FOV;
+    if (bGateDemo || bLatchDemo)
+    {
+        if (Index==1) { OrbitTarget=FVector(-20,5,93); Position=OrbitTarget+FVector(120,170,195); FOV=55; }
+        else if (Index==2) { OrbitTarget=FVector(0,0,200); Position=FVector(650,1100,450); FOV=64; }
+        else if (Index==3) { OrbitTarget=FVector(-40,0,86); Position=OrbitTarget+FVector(0,.01,300); FOV=65; }
+        else { OrbitTarget=FVector(-42,30,89); Position=OrbitTarget+FVector(190,280,235); FOV=53; }
+        SetCameraPose(Position,OrbitTarget,FOV);
+        return;
+    }
     if (Index == 1) { Position = FVector(140,185,185); OrbitTarget = FVector(0,0,84); FOV=40; }
     else if (Index == 3) { Position=FVector(24,32,115); OrbitTarget=FVector(0,0,88); FOV=43; }
     else if (Index == 2) { Position=FVector(650,1100,400); OrbitTarget=FVector(0,0,300); FOV=64; }
@@ -210,14 +227,28 @@ void AMaterialHallController::ApplyQuality(int32 Index)
 
 void AMaterialHallController::SetFinish(float Value)
 {
+    if (AndGate) AndGate->SetFinish(FMath::Lerp(.08f,.55f,Value));
+    if (Latch) Latch->SetFinish(FMath::Lerp(.08f,.55f,Value));
     for (UMaterialInstanceDynamic* Material : Metals)
         if (Material) Material->SetScalarParameterValue(TEXT("Roughness"),FMath::Lerp(.08f,.55f,Value));
 }
 
-void AMaterialHallController::ToggleMotion() { bAnimateRod=!bAnimateRod; }
+void AMaterialHallController::ToggleMotion()
+{
+    if (bLatchDemo && Latch) Latch->ToggleCycle();
+    else if (bGateDemo && AndGate) AndGate->ToggleCycle();
+    else bAnimateRod=!bAnimateRod;
+}
 
 void AMaterialHallController::ResetScene()
 {
+    if (bLatchDemo && Latch) { Latch->ResetDemo(); SetView(0); return; }
+    if (bGateDemo && AndGate)
+    {
+        AndGate->ResetGate();
+        if (!bVRMode) SetView(0);
+        return;
+    }
     bAnimateRod=true; MotionTime=0;
     if (BrassRod) BrassRod->SetActorLocationAndRotation(BrassRestPosition,FRotator(0,BrassRestYaw,0));
     if (!bVRMode) SetView(0);
@@ -248,13 +279,16 @@ void AMaterialHallController::Tick(float DeltaSeconds)
         if (WasInputKeyJustPressed(EKeys::F)) SelectQuality((QualityIndex+1)%3);
         if (WasInputKeyJustPressed(EKeys::SpaceBar)) ToggleMotion();
         if (WasInputKeyJustPressed(EKeys::R)) ResetScene();
+        if (WasInputKeyJustPressed(EKeys::Z)) ToggleGateInput(0);
+        if (WasInputKeyJustPressed(EKeys::X)) ToggleGateInput(1);
+        if (WasInputKeyJustPressed(EKeys::G)) { if (bLatchDemo) SelectDemo(true); else if (bGateDemo) SelectDemo(false); else SelectLatchDemo(); }
         auto Axis=[this](const FKey& Positive,const FKey& Negative) { return float(IsInputKeyDown(Positive))-float(IsInputKeyDown(Negative)); };
         Navigate(Axis(EKeys::W,EKeys::S),Axis(EKeys::D,EKeys::A),Axis(EKeys::E,EKeys::Q),
             Axis(EKeys::L,EKeys::J),Axis(EKeys::I,EKeys::K),DeltaSeconds,
             IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift) ? 3.f : 1.f);
     }
     if (WasInputKeyJustPressed(EKeys::Escape)) FGenericPlatformMisc::RequestExit(false);
-    if (bAnimateRod && BrassRod)
+    if (!bGateDemo && !bLatchDemo && bAnimateRod && BrassRod)
     {
         const float OldYaw=BrassRod->GetActorRotation().Yaw;
         MotionTime=FMath::Fmod(MotionTime+DeltaSeconds,60.f);
@@ -269,6 +303,8 @@ void AMaterialHallController::Tick(float DeltaSeconds)
     if (bSmokeTest && !bTestFinished) TickSmokeTest();
     if (bPerformanceTest && !bTestFinished) TickPerformanceTest();
     if ((bVRTest || bVRHardwareTest) && !bTestFinished) TickVRTest();
+    if (bGateTest && !bTestFinished) TickGateTest();
+    if (bLatchTest && !bTestFinished) TickLatchTest();
 }
 
 void AMaterialHallController::BuildInterface()
@@ -289,7 +325,7 @@ void AMaterialHallController::BuildInterface()
             [SNew(STextBlock).Text(FText::FromString(Label)).Font(Medium).ColorAndOpacity(Ink)];
     };
     TSharedRef<SHorizontalBox> Cameras=SNew(SHorizontalBox);
-    const TCHAR* Names[]={TEXT("Table"),TEXT("Detail"),TEXT("Hall"),TEXT("Pivot")};
+    const TCHAR* Names[]={TEXT("Table"),TEXT("Detail"),TEXT("Hall"),TEXT("Top / pivot")};
     for (int32 Index=0;Index<4;++Index)
         Cameras->AddSlot().AutoWidth().Padding(0,0,5,0)[Button(Names[Index],[this,Index](){ SetView(Index); })];
     TSharedRef<SHorizontalBox> Qualities=SNew(SHorizontalBox);
@@ -311,7 +347,13 @@ void AMaterialHallController::BuildInterface()
       .BorderBackgroundColor(FLinearColor(.95f,.94f,.90f,.94f)).Padding(FMargin(20,17))
       [SNew(SVerticalBox)
         +SVerticalBox::Slot().AutoHeight()[SNew(STextBlock).Text(FText::FromString("MATERIAL HALL")).Font(FCoreStyle::GetDefaultFontStyle("Bold",18)).ColorAndOpacity(Ink)]
-        +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,15)[SNew(STextBlock).Text(FText::FromString("Steel plate & rotating brass pointer")).Font(Small).ColorAndOpacity(Muted)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,3,0,12)[SNew(STextBlock).Text_Lambda([this](){ return FText::FromString(bLatchDemo ? TEXT("Rod logic / RS latch") : bGateDemo ? TEXT("Rod logic / AND gate") : TEXT("Steel plate & rotating brass pointer")); }).Font(Small).ColorAndOpacity(Muted)]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,10)[SNew(SHorizontalBox)
+          +SHorizontalBox::Slot().AutoWidth().Padding(0,0,5,0)[Button(TEXT("RS latch"),[this](){SelectLatchDemo();})]
+          +SHorizontalBox::Slot().AutoWidth().Padding(0,0,5,0)[Button(TEXT("AND gate"),[this](){SelectDemo(true);})]
+          +SHorizontalBox::Slot().AutoWidth()[Button(TEXT("Pointer"),[this](){SelectDemo(false);})]]
+        +SVerticalBox::Slot().AutoHeight().Padding(0,0,0,12)[BuildGateControls(false)]
+        +SVerticalBox::Slot().AutoHeight()[BuildLatchControls()]
         +SVerticalBox::Slot().AutoHeight()[Cameras]
         +SVerticalBox::Slot().AutoHeight().Padding(0,15,0,6)[SNew(STextBlock).Text(FText::FromString("RENDER QUALITY")).Font(Small).ColorAndOpacity(Muted)]
         +SVerticalBox::Slot().AutoHeight()[Qualities]
@@ -323,12 +365,12 @@ void AMaterialHallController::BuildInterface()
         +SVerticalBox::Slot().AutoHeight().Padding(0,7,0,3)[SNew(SSlider).IsFocusable(false).Value((.24f-.08f)/.47f).OnValueChanged_Lambda([this](float Value){SetFinish(Value);})]
         +SVerticalBox::Slot().AutoHeight()[SNew(STextBlock).Text(FText::FromString("Polished                                    Brushed")).Font(Small).ColorAndOpacity(Muted)]
         +SVerticalBox::Slot().AutoHeight().Padding(0,15,0,0)[SNew(SHorizontalBox)
-          +SHorizontalBox::Slot().AutoWidth().Padding(0,0,5,0)[SNew(SButton).ButtonStyle(&HallButtonStyle).IsFocusable(false).ContentPadding(FMargin(13,8)).OnClicked_Lambda([this](){ToggleMotion();return FReply::Handled();})[SNew(STextBlock).Font(Medium).ColorAndOpacity(Ink).Text_Lambda([this](){return FText::FromString(bAnimateRod?"Pause rotation":"Resume rotation");})]]
+          +SHorizontalBox::Slot().AutoWidth().Padding(0,0,5,0)[SNew(SButton).ButtonStyle(&HallButtonStyle).IsFocusable(false).ContentPadding(FMargin(13,8)).OnClicked_Lambda([this](){ToggleMotion();return FReply::Handled();})[SNew(STextBlock).Font(Medium).ColorAndOpacity(Ink).Text_Lambda([this](){return GetMotionLabel();})]]
           +SHorizontalBox::Slot().AutoWidth()[Button("Reset",[this](){ResetScene();})]]
       ]]
     +SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(24)
       [SNew(SBorder).BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush")).BorderBackgroundColor(FLinearColor(.95f,.94f,.90f,.90f)).Padding(12)
-        [SNew(STextBlock).Text(FText::FromString(TEXT("WASD move  |  Q/E down/up  |  IJKL look  |  Shift faster  |  Right-drag orbit  |  Scroll zoom\n1 / 2 / 3 / 4 views  |  F quality  |  Space pause / resume  |  R reset  |  Esc quit"))).Font(Small).ColorAndOpacity(Ink)]];
+        [SNew(STextBlock).Text_Lambda([this](){ return FText::FromString(bLatchDemo ? TEXT("Z / X toggle Set / Reset rods  |  Space cycle Set / Hold / Reset / Hold  |  R reset  |  G switch demo\n1 / 2 / 3 / 4 views  |  WASD + Q/E move  |  Right-drag orbit  |  Scroll zoom  |  Esc quit") : bGateDemo ? TEXT("Click input handles or Z / X to toggle A / B  |  Space cycle states  |  R reset  |  G switch demo\n1 / 2 / 3 / 4 views  |  WASD + Q/E move  |  Right-drag orbit  |  Scroll zoom  |  Esc quit") : TEXT("WASD move  |  Q/E down/up  |  IJKL look  |  Shift faster  |  Right-drag orbit  |  Scroll zoom\n1 / 2 / 3 / 4 views  |  F quality  |  Space pause / resume  |  R reset  |  G switch demo  |  Esc quit")); }).Font(Small).ColorAndOpacity(Ink)]];
     if (GEngine && GEngine->GameViewport) GEngine->GameViewport->AddViewportWidgetContent(Interface.ToSharedRef(),10);
 }
 

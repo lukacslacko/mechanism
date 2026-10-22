@@ -119,7 +119,7 @@ void AHallVRPawn::PlacePanel()
     const FVector Head = Camera->GetComponentLocation();
     const FVector Position = Head + Yaw.RotateVector(FVector(100, 95, -5));
     Panel->SetWorldLocationAndRotation(Position, FRotator(0, (Head - Position).Rotation().Yaw, 0));
-    Panel->SetWorldScale3D(FVector(.085));
+    Panel->SetWorldScale3D(FVector(Panel->GetDrawSize().Y>1000 ? .075 : .085));
 }
 
 void AHallVRPawn::TogglePanel()
@@ -136,7 +136,7 @@ bool AHallVRPawn::IsRigValid() const
 {
     return Camera && Camera->GetAttachParent() == RootComponent && !Camera->bUsePawnControlRotation &&
         LeftGrip->GetTrackingMotionSource() == TEXT("LeftGrip") && RightGrip->GetTrackingMotionSource() == TEXT("RightGrip") &&
-        RightAim->GetTrackingMotionSource() == TEXT("RightAim") && Panel->GetDrawSize() == FVector2D(900, 980) &&
+        RightAim->GetTrackingMotionSource() == TEXT("RightAim") && Panel->GetDrawSize().X == 900 && Panel->GetDrawSize().Y >= 980 &&
         Pointer->InteractionSource == EWidgetInteractionSource::World;
 }
 
@@ -152,14 +152,15 @@ void AHallVRPawn::UpdateInput(AMaterialHallController& Player, bool bActive)
     const bool bRightTracked = bActive && RightAim->IsTracked();
     LeftHand->SetVisibility(bActive && LeftGrip->IsTracked());
     RightHand->SetVisibility(bActive && RightGrip->IsTracked());
-    Laser->SetVisibility(bRightTracked && IsPanelVisible());
+    Laser->SetVisibility(bRightTracked && (IsPanelVisible() || Player.bGateDemo));
     Pointer->SetActive(bRightTracked && IsPanelVisible());
-    const bool bPressed = bRightTracked && IsPanelVisible() &&
+    const bool bPressed = bRightTracked &&
         Player.GetInputAnalogKeyState(EKeys::OculusTouch_Right_Trigger_Axis) > .55f;
-    if (bPressed && !bTriggerHeld) Pointer->PressPointerKey(EKeys::LeftMouseButton);
+    FHitResult Hit;
+    GetWorld()->LineTraceSingleByChannel(Hit,RightAim->GetComponentLocation(),RightAim->GetComponentLocation()+RightAim->GetForwardVector()*400,ECC_Visibility);
+    if (bPressed && !bTriggerHeld && !Player.ActivateGateHandle(Hit.GetComponent()) && IsPanelVisible()) Pointer->PressPointerKey(EKeys::LeftMouseButton);
     if (!bPressed && bTriggerHeld) Pointer->ReleasePointerKey(EKeys::LeftMouseButton);
     bTriggerHeld = bPressed;
-    const FHitResult& Hit = Pointer->GetLastHitResult();
     const float Length = Hit.bBlockingHit ? FMath::Min(400.f, Hit.Distance) : 400.f;
     Laser->SetRelativeLocation(FVector(Length * .5f, 0, 0));
     Laser->SetRelativeScale3D(FVector(Length / 100.f, .003f, .003f));
@@ -173,6 +174,8 @@ void AHallVRPawn::UpdateInput(AMaterialHallController& Player, bool bActive)
     }
     if (Player.WasInputKeyJustPressed(EKeys::OculusTouch_Left_X_Click)) SetStation(Station + 1);
     if (Player.WasInputKeyJustPressed(EKeys::OculusTouch_Left_Y_Click)) TogglePanel();
-    if (Player.WasInputKeyJustPressed(EKeys::OculusTouch_Right_A_Click)) Player.ToggleMotion();
-    if (Player.WasInputKeyJustPressed(EKeys::OculusTouch_Right_B_Click)) Player.ResetScene();
+    if (Player.WasInputKeyJustPressed(EKeys::OculusTouch_Right_A_Click))
+    { if (Player.bGateDemo) Player.ToggleGateInput(0); else Player.ToggleMotion(); }
+    if (Player.WasInputKeyJustPressed(EKeys::OculusTouch_Right_B_Click))
+    { if (Player.bGateDemo) Player.ToggleGateInput(1); else Player.ResetScene(); }
 }

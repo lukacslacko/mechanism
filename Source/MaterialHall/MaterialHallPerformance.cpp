@@ -67,7 +67,7 @@ void AMaterialHallController::SavePerformanceSettings()
 {
     // Test runs must not change the user's preferences. Automatic adjustments are
     // deliberately transient; only explicit choices are saved.
-    if (bSmokeTest || bPerformanceTest || bVRTest || bVRHardwareTest) return;
+    if (bSmokeTest || bPerformanceTest || bVRTest || bVRHardwareTest || bGateTest || bLatchTest) return;
     const TCHAR* Section = bVRMode ? TEXT("MaterialHall.VRPerformance") : SettingsSection;
     GConfig->SetBool(Section, TEXT("AutoTune"), bAutoTune, GGameUserSettingsIni);
     GConfig->SetBool(Section, TEXT("VSync"), bVSync, GGameUserSettingsIni);
@@ -155,7 +155,7 @@ void AMaterialHallController::TickPerformance(float DeltaSeconds)
         }
         return;
     }
-    const bool bActive = bSmokeTest || bPerformanceTest || FApp::HasFocus();
+    const bool bActive = bSmokeTest || bPerformanceTest || bGateTest || bLatchTest || FApp::HasFocus();
     if (bAutoTune && !bActive && !bDynamicResolutionPaused)
     {
         GEngine->PauseDynamicResolution();

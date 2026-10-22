@@ -66,3 +66,14 @@ roughness wood map is included for experimentation; the current walnut graph
 uses a constant roughness value of 0.29.
 
 See [third-party notices](../THIRD_PARTY_NOTICES.md) for texture attribution.
+
+## AND linkage
+
+The default runtime demo uses 11 original parts in `SourceAssets/AndGate` and
+their imported meshes and seven finishes in `Content/MaterialHall/AndGate`.
+Regenerate with `blender --background --python .\Tools\build_and_meshes.py`, then
+run `Tools/import_and_assets.py` through the Python commandlet shown above.
+The generation script checks manifold surfaces and positive volume. The import
+script replaces the gate meshes without changing the saved hall or pointer.
+`AHallAndGate` assembles the guides, links, sliders and layered pin joints at
+runtime. See [AND-GATE.md](AND-GATE.md) for the exact linkage dimensions.

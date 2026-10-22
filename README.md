@@ -1,17 +1,37 @@
 # Mechanism
 
-An interactive Unreal Engine material and mechanism study: a square steel plate
-on a walnut table in a bright white hall, with a drilled square brass bar turning
-on a central steel pivot. This is the starting point for a mechanical computing
-machine simulator.
+An interactive Unreal Engine mechanical computing study in a bright white hall.
+The default desktop demo is an **RS latch** made from two facing rod-based AND
+mechanisms, with inverted spring feedback and a half-input-spacing lateral offset.
+**Set pulse** and **Reset pulse** select a stored bit; the controls automatically
+release and the feedback retains it. The individual **AND gate** and original
+rotating brass **Pointer** remain selectable.
 
-![Actual standalone Unreal render](docs/images/detail.png)
+![RS latch in the packaged desktop app](docs/images/rs-latch.png)
 
-The pointer rotates once per minute. A real through-hole clears the pin, and a
-steel collar supports the bar above the plate. Lighting and reflections use
-real-time Lumen. The motion is prescribed animation; a mechanical solver is
-future work. Windows PC VR supports Quest 2 over USB Quest Link through OpenXR,
-with tracked controllers and a world-space control panel.
+The latch uses active-low controls: **S'=0** sets, **R'=0** resets, and **11** holds.
+Both controls at 0 are invalid; simultaneous release can leave the symmetrical
+mechanism unresolved. The UI reports that state instead of claiming a valid bit.
+The spring couplers visibly accommodate transient feedback differences. This is
+a continuous kinematic model with overdamped followers, not a rigid-body force
+simulation. See [the latch model](docs/RS-LATCH.md).
+
+Current development and verification focus on the **desktop app**. Quest testing
+is paused until requested again; the existing Link mode remains available.
+
+![AND linkage in the packaged Unreal app](docs/images/and-gate.png)
+
+Click the colored input handles or use the panel to set A and B. The sliders
+ease into position while the links maintain their lengths and connected pivots.
+Only **11** advances the output to 1; **00**, **01** and **10** settle at exactly
+the same zero position. A single moving input produces a small temporary output
+excursion (about 7.36% of its stroke). The output follows an analytical linkage
+solver, not a Boolean animation. This models positions, not forces or friction.
+See [the linkage geometry](docs/AND-GATE.md) for dimensions and validation.
+
+Lighting and reflections use real-time Lumen. Windows PC VR supports Quest 2
+over USB Quest Link through OpenXR, with tracked controllers and a world-space
+control panel. The original pointer rotates once per minute using prescribed motion.
 
 ## Start on Windows 11
 
@@ -59,8 +79,10 @@ system's runtime selection. After packaging, you can also double-click
 `Launch-Quest-Link.cmd` in the repository. `Launch-Desktop.cmd` uses `-nohmd`
 so desktop mode works independently of a connected headset.
 
-The right controller points at the panel; its trigger clicks and drags the
-finish slider. **A** pauses/resumes, **B** resets the mechanism, **X** moves to
+The right controller points at the panel or colored input handles; its trigger
+selects them and drags the finish slider. In the AND demo, **A** and **B** toggle
+the two inputs. In the pointer demo, **A** pauses/resumes and **B** resets.
+**X** moves to
 the next of four viewing positions, **Y** shows/hides the panel near your current
 view, and the **right stick** snap-turns 45 degrees. Head tracking and room-scale
 movement use real-world scale. Resetting the mechanism preserves your position.
@@ -87,9 +109,11 @@ See [the Windows guide](docs/WINDOWS.md#quest-link-verification) for VR tests.
 | I / K, J / L | Look up/down, left/right |
 | Shift | Move three times faster |
 | Right-drag / scroll | Orbit / zoom |
-| 1 / 2 / 3 / 4 | Table / detail / hall / pivot close-up |
-| Space | Pause/resume rotation |
-| R | Reset pointer and camera; resume rotation |
+| Z / X | Toggle latch S' / R', or AND inputs A / B |
+| G | Cycle RS latch / AND gate / pointer |
+| 1 / 2 / 3 / 4 | Table / detail / hall / top (pivot close-up in pointer demo) |
+| Space | Start/pause the latch memory cycle, AND state cycle, or pointer rotation |
+| R | Pulse latch Reset; reset AND inputs; or reset pointer and resume rotation |
 | F | Cycle Smooth / Balanced / Fine |
 | Escape | Quit the game |
 
@@ -116,6 +140,7 @@ reports those limits. Some temporal grain remains in soft shadows and reflection
 - `Source/MaterialHall/`: native C++ interaction, Slate UI, rotation and runtime tests.
 - `Content/MaterialHall/WhiteHall.umap`: complete editable hall and assembly.
 - `Content/MaterialHall/Assets/` and `Materials/`: editable imported meshes, textures and material graphs.
+- `Content/MaterialHall/AndGate/`: original machined linkage parts and finishes, assembled by `AHallAndGate` at runtime.
 - `SourceAssets/`: original FBX meshes and texture maps for reimporting.
 - `Tools/`: Windows/Mac build scripts, Blender mesh generators and Unreal Python helpers.
 - `docs/ASSETS.md`: dimensions, geometry editing and regeneration.
@@ -137,6 +162,19 @@ app is `Saved/StagedBuilds/Mac/MaterialHall.app`; copy that entire bundle.
 The script builds and validates in the background without opening the editor.
 
 ## Validation status
+
+The desktop latch solver checks Set, Reset, 30-second retention of both states,
+mid-transition reversal, automatic pulses, invalid controls, simultaneous release
+and recovery at 30, 60 and 144 fps. Its packaged test checks ten stages, keyboard
+input, demo switching, fixed-length links and visible feedback connections.
+Quest tests are intentionally excluded from this change.
+
+The AND solver passes a 101 × 101 input-position sweep, exact truth-table checks,
+fixed-length constraints, symmetry, and smooth reversal/settling at 30–120 fps.
+The packaged Windows gate test checks 11 transitions, rendered joint alignment,
+keyboard input, handle ray selection and switching between demos. The simulated
+Quest rig test also exercises the AND input buttons and output. These tests do
+not substitute for checking the new demo inside the headset.
 
 The original desktop baseline was rebuilt from its clean repository folder, packaged,
 rendered and tested on an Apple M2 Pro with macOS 27.0.1 and UE 5.8.4. Its checks covered a complete revolution,

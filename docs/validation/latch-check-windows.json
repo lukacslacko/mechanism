@@ -1,0 +1,78 @@
+{
+	"passed": true,
+	"stages": [
+		{
+			"stage": "initial-hold",
+			"passed": true,
+			"Q": 0,
+			"Q_bar": 1,
+			"feedback_error": 0
+		},
+		{
+			"stage": "set",
+			"passed": true,
+			"Q": 0.9999999998687229,
+			"Q_bar": 1.3127710030147455e-10,
+			"feedback_error": 1.3127697146024461e-10
+		},
+		{
+			"stage": "hold-set",
+			"passed": true,
+			"Q": 0.9999998633031616,
+			"Q_bar": 9.5627410989784778e-08,
+			"feedback_error": 5.4557916628894532e-08
+		},
+		{
+			"stage": "reset",
+			"passed": true,
+			"Q": 1.3363832263024733e-10,
+			"Q_bar": 0.99999999986636168,
+			"feedback_error": 1.336383633581012e-10
+		},
+		{
+			"stage": "hold-reset",
+			"passed": true,
+			"Q": 9.6936267679481602e-08,
+			"Q_bar": 0.99999986143218567,
+			"feedback_error": 5.5304652635257412e-08
+		},
+		{
+			"stage": "invalid",
+			"passed": true,
+			"Q": 0.99999999999999989,
+			"Q_bar": 0.99999999999999989,
+			"feedback_error": 1.3322676295501878e-15
+		},
+		{
+			"stage": "unresolved",
+			"passed": true,
+			"Q": 0.47216284728224978,
+			"Q_bar": 0.47216284728224978,
+			"feedback_error": 6.106226635438361e-16
+		},
+		{
+			"stage": "set-pulse",
+			"passed": true,
+			"Q": 0.99998822602945558,
+			"Q_bar": 8.2366613538553679e-06,
+			"feedback_error": 4.6988578746853804e-06
+		},
+		{
+			"stage": "reset-pulse",
+			"passed": true,
+			"Q": 8.849048248271707e-06,
+			"Q_bar": 0.99998735065694244,
+			"feedback_error": 5.0481829212412066e-06
+		},
+		{
+			"stage": "keyboard-set",
+			"passed": true,
+			"Q": 0.99999999984580978,
+			"Q_bar": 1.5418999410599099e-10,
+			"feedback_error": 1.5419029339006006e-10
+		}
+	],
+	"constraint_samples": 2405,
+	"max_joint_error_cm": 0.00014764465717647545,
+	"max_spring_endpoint_error_cm": 0.0001999470642140011
+}

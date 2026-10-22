@@ -1,0 +1,66 @@
+{
+	"passed": true,
+	"transitions": [
+		{
+			"inputs": "00",
+			"output_travel": 1.0388051692399125e-16,
+			"passed": true
+		},
+		{
+			"inputs": "10",
+			"output_travel": -1.0388051692399125e-16,
+			"passed": true
+		},
+		{
+			"inputs": "00",
+			"output_travel": 1.0388051692399125e-16,
+			"passed": true
+		},
+		{
+			"inputs": "01",
+			"output_travel": -1.0388051692399125e-16,
+			"passed": true
+		},
+		{
+			"inputs": "11",
+			"output_travel": 1,
+			"passed": true
+		},
+		{
+			"inputs": "10",
+			"output_travel": -1.0388051692399125e-16,
+			"passed": true
+		},
+		{
+			"inputs": "11",
+			"output_travel": 1,
+			"passed": true
+		},
+		{
+			"inputs": "00",
+			"output_travel": 1.0388051692399125e-16,
+			"passed": true
+		},
+		{
+			"inputs": "11",
+			"output_travel": 1,
+			"passed": true
+		},
+		{
+			"inputs": "01",
+			"output_travel": -1.0388051692399125e-16,
+			"passed": true
+		},
+		{
+			"inputs": "00",
+			"output_travel": 1.0388051692399125e-16,
+			"passed": true
+		}
+	],
+	"max_visual_joint_error_cm": 0.000112591989261017,
+	"max_single_input_output_fraction": 0.073574644476338671,
+	"constraint_samples": 1804,
+	"input_handle_trace_and_toggle": true,
+	"input_link_length_cm": 35.50154926196884,
+	"output_link_length_cm": 33.634284297442541
+}

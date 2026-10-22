@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Editor', 'Validate', 'Package', 'Test', 'PerformanceTest', 'VRTest')]
+    [ValidateSet('Editor', 'Validate', 'Package', 'Test', 'PerformanceTest', 'VRTest', 'GateTest', 'LatchTest')]
     [string]$Action = 'Package',
     [string]$EnginePath = $env:UE_ROOT
 )
@@ -50,13 +50,13 @@ switch ($Action) {
         Write-Host "Packaged game: $Executable"
         Write-Host 'Keep the whole Windows folder together; the EXE requires the adjacent content and runtime.'
     }
-    { $_ -in @('Test', 'PerformanceTest', 'VRTest') } {
+    { $_ -in @('Test', 'PerformanceTest', 'VRTest', 'GateTest', 'LatchTest') } {
         $Executable = Join-Path $ProjectRoot 'Saved\StagedBuilds\Windows\MaterialHall.exe'
         if (-not (Test-Path -LiteralPath $Executable)) { throw 'Run -Action Package first.' }
         $CaptureDirectory = Join-Path $ProjectRoot ('Saved\Validation\Run-' + [Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $CaptureDirectory | Out-Null
-        $TestFlag = if ($Action -eq 'PerformanceTest') { '-HallPerformanceTest' } elseif ($Action -eq 'VRTest') { '-HallVRTest' } else { '-HallSelfTest' }
-        $ReportName = if ($Action -eq 'PerformanceTest') { 'performance-check.json' } elseif ($Action -eq 'VRTest') { 'vr-check.json' } else { 'runtime-check.json' }
+        $TestFlag = if ($Action -eq 'PerformanceTest') { '-HallPerformanceTest' } elseif ($Action -eq 'VRTest') { '-HallVRTest' } elseif ($Action -eq 'GateTest') { '-HallGateTest' } elseif ($Action -eq 'LatchTest') { '-HallLatchTest' } else { '-HallSelfTest' }
+        $ReportName = if ($Action -eq 'PerformanceTest') { 'performance-check.json' } elseif ($Action -eq 'VRTest') { 'vr-check.json' } elseif ($Action -eq 'GateTest') { 'and-check.json' } elseif ($Action -eq 'LatchTest') { 'latch-check.json' } else { 'runtime-check.json' }
         $Arguments = '-nohmd -RenderOffscreen -windowed -ResX=1440 -ResY=900 -unattended -nosplash -nosound ' + $TestFlag + ' -HallCaptureDir="' + $CaptureDirectory + '"'
         Write-Host "Running $Action. Reports: $CaptureDirectory"
         $Process = Start-Process -FilePath $Executable -ArgumentList $Arguments -WindowStyle Hidden -Wait -PassThru

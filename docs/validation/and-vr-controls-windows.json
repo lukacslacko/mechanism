@@ -1,0 +1,17 @@
+{
+	"passed": true,
+	"test_type": "simulated_rig_no_headset",
+	"rig_valid": true,
+	"compositor_pacing": true,
+	"stereo": false,
+	"head_tracked": false,
+	"controllers_tracked": false,
+	"session_focused": false,
+	"simulated_controls_and_transforms": true,
+	"refresh_hz": 0,
+	"focused_frames": 0,
+	"average_fps": 0,
+	"gpu_ms": 1.8370251389156012,
+	"resolution_percentage": 80,
+	"quality": 1
+}

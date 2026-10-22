@@ -13,6 +13,8 @@ class UMaterialInstanceDynamic;
 class SWidget;
 class FJsonValue;
 class AHallVRPawn;
+class AHallAndGate;
+class AHallLatch;
 
 UCLASS()
 class AMaterialHallController : public APlayerController
@@ -29,6 +31,15 @@ private:
     void BuildVRInterface();
     bool IsVRActive() const;
     void TickVRTest();
+    void SelectDemo(bool bGate);
+    void ToggleGateInput(int32 Index);
+    bool ActivateGateHandle(UPrimitiveComponent* Component);
+    TSharedRef<SWidget> BuildGateControls(bool bForVR);
+    FText GetMotionLabel() const;
+    void TickGateTest();
+    void SelectLatchDemo();
+    TSharedRef<SWidget> BuildLatchControls();
+    void TickLatchTest();
     void SetView(int32 Index);
     void ApplyQuality(int32 Index);
     void SelectQuality(int32 Index);
@@ -52,6 +63,8 @@ private:
     void TickNavigationTest();
     UPROPERTY() TObjectPtr<ACameraActor> ViewCamera;
     UPROPERTY() TObjectPtr<AHallVRPawn> VRPawn;
+    UPROPERTY() TObjectPtr<AHallAndGate> AndGate;
+    UPROPERTY() TObjectPtr<AHallLatch> Latch;
     UPROPERTY() TObjectPtr<AStaticMeshActor> BrassRod;
     UPROPERTY() TObjectPtr<AStaticMeshActor> SteelPlate;
     UPROPERTY() TObjectPtr<AStaticMeshActor> PivotPin;
@@ -64,6 +77,25 @@ private:
     int32 QualityIndex = 1;
     int32 ViewIndex = 0;
     bool bAnimateRod = true;
+    bool bGateDemo = true;
+    bool bLatchDemo = false;
+    bool bLatchTest = false;
+    bool bLatchTestPassed = true;
+    int32 LatchTestStep = -1;
+    int32 LatchCapturedStep = -1;
+    int32 LatchSamples = 0;
+    double LatchStepTime = 0;
+    double MaxLatchJointError = 0;
+    double MaxLatchConnectionError = 0;
+    TArray<TSharedPtr<FJsonValue>> LatchResults;
+    bool bGateTest = false;
+    bool bGateTestPassed = true;
+    double MaxGateConstraintError = 0;
+    double MaxGateSingleInputDrift = 0;
+    int32 GateTestStep = -1;
+    double GateStepTime = 0;
+    int32 GateTestSamples = 0;
+    TArray<TSharedPtr<FJsonValue>> GateTestResults;
     float BrassRestYaw = 25;
     float MotionTime = 0;
     float SmoothedFrameTime = 1.f / 60.f;

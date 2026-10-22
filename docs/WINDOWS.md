@@ -123,6 +123,10 @@ in `docs/validation` remain the original Mac results.
 
 ## Quest Link verification
 
+**Current focus:** desktop development. Skip Quest/VR tests unless requested.
+The desktop latch check is `Tools/build-windows.ps1 -Action LatchTest`; it covers
+memory retention, invalid/recovery states, input and rendered connections.
+
 The OpenXR and XRBase plugins ship with Unreal; no separate Meta Unreal plugin
 or Android SDK is needed for the Windows Link build. Install Meta Horizon Link
 on Windows, connect Quest 2 by USB, enter Quest Link inside the headset, then run
@@ -135,6 +139,14 @@ rig test. It checks the cooked camera/controller/widget components, injected
 Touch A/B/X/Y buttons, snap turning around an offset head pose, floor positioning,
 widget ray collision, and compositor pacing settings. It explicitly reports
 `simulated_rig_no_headset`; it does not prove hardware tracking or stereo output.
+It also switches to the AND demo, injects the Touch A/B input toggles, checks
+the settled output and captures the expanded control panel.
+
+For the linkage itself, run `Tools/build-windows.ps1 -Action GateTest`. This checks
+all four states and 11 transitions in the packaged app, plus keyboard input,
+handle selection and rendered joint alignment. Reports and screenshots are in a
+fresh `Saved/Validation/Run-*` folder. The independent editor automation test is
+`MaterialHall.Mechanism.AndLinkage`; see [AND-GATE.md](AND-GATE.md).
 
 For the connected headset test:
 
